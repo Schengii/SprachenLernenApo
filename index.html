@@ -1860,6 +1860,13 @@ function offlineStat(){
 }
 function offlinePrepare(){
   const m=$('#modal');
+  if(STANDALONE){
+    m.innerHTML=`<div class="mbox" role="dialog" aria-modal="true" aria-labelledby="of-t"><h2 id="of-t">Lektionen übernehmen</h2>
+    <p>In dieser Offline-App gibt es keine KI, deshalb kann sie keine Lektionen erzeugen. So kommst du an die Lektionen:</p>
+    <ol><li>Öffne die Claude-Version von Lingua viva (mit Internet).</li><li>Startseite → „Offline nutzen“ → Niveaus wählen → „Laden starten“.</li><li>Dort unter „Datenschutz &amp; meine Daten“ den Lernstand exportieren (enthält die geladenen Lektionen).</li><li>Hier unter „Datenschutz &amp; meine Daten“ importieren.</li></ol>
+    <div class="row"><button class="btn primary" id="of-close">Verstanden</button></div></div>`;
+    m.hidden=false;$('#of-close').focus();$('#of-close').onclick=closeModal;return;
+  }
   m.innerHTML=`<div class="mbox" role="dialog" aria-modal="true" aria-labelledby="of-t"><h2 id="of-t">Für Offline vorbereiten</h2>
     <p>Wähle die Niveaus. Pro Lektion oder Grammatik-Thema dauert das einige Sekunden und nutzt die KI (Internet nötig). Was schon geladen ist, wird übersprungen; bei Abbruch bleibt das Geladene erhalten.</p>
     ${['A1','A2','B1','B2'].map(l=>`<label class="cs"><input type="checkbox" class="of-lv" value="${l}" ${l===S.level?'checked':''}><span><b>${l}</b> · ${UNITS.filter(u=>u.lv===l).length} Lektionen, ${GRAM.filter(g=>g.lv===l).length} Grammatik-Themen</span></label>`).join('')}

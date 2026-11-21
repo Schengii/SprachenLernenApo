@@ -1789,7 +1789,7 @@ Nur JSON: {"title":"Titel in der Zielsprache","paragraphs":[{"es":"","de":"deuts
     const paras=(r.paragraphs||[]).filter(p=>p.es);
     if(!paras.length)throw {message:'Keine Geschichte erhalten – nochmal versuchen.'};
     story={title:r.title||t,paras,vocab:(r.vocab||[]).filter(v=>v.es&&v.de),qs:(r.questions||[]).map(cleanEx2).filter(Boolean)};
-    renderStory();
+    renderStory();out.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){out.innerHTML='';toast(e.message)}finally{btn.disabled=false;btn.textContent='Geschichte erstellen'}
 };
 function renderFixed(){
@@ -1841,7 +1841,7 @@ Nur JSON: {"title":"Titel in der Zielsprache","lines":[{"who":"A","es":"","de":"
     const lines=(r.lines||[]).filter(l=>l&&l.es).map(l=>({who:l.who==='B'?'B':'A',es:l.es,de:l.de||''}));
     if(lines.length<4)throw {message:'Kein Dialog erhalten – nochmal versuchen.'};
     dlg={title:r.title||t,lines,vocab:(r.vocab||[]).filter(v=>v.es&&v.de),qs:(r.questions||[]).map(cleanEx2).filter(Boolean)};
-    renderDialog();
+    renderDialog();out.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){out.innerHTML='';toast(e.message)}finally{btn.disabled=false;btn.textContent='Dialog erstellen'}
 };
 async function speakDialog(lines){

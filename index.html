@@ -591,12 +591,13 @@ function cloudOff(){clearTimeout(Cloud.timer);Cloud.col=null;Cloud.dirty.clear()
 
 /* ---------- KI ---------- */
 async function ai(prompt){
+  if(G.saver)throw {message:'Sparmodus ist an – KI ist aus. Du kannst ihn auf der Startseite ausschalten.'};
   if(!navigator.onLine)throw {message:'Du bist offline – das braucht Internet. Karten, Wiederholung und vorbereitete Lektionen funktionieren weiter.'};
   if(!caps.sample)throw {message:'KI-Zugriff in dieser Ansicht nicht verfügbar.'};
   if(!Consent.ai){await askConsent();if(!Consent.ai)throw {message:'KI-Funktionen sind ohne deine Einwilligung aus (Datenschutz & meine Daten).'}}
   for(let a=0;a<2;a++){
     let r;
-    try{r=await caps.sample(prompt,{cache:false})}
+    try{const t=dayNum();if(!G.aiLog||G.aiLog.d!==t)G.aiLog={d:t,n:0};G.aiLog.n++;saveG();r=await caps.sample(prompt,{cache:false})}
     catch(e){
       if(e&&e.code==='not_granted')throw {message:'Zugriff auf Claude wurde abgelehnt.'};
       if(e&&e.code==='rate_limited')throw {message:'Zu viele Anfragen – kurz warten und nochmal versuchen.'};
@@ -673,7 +674,7 @@ function cancelMic(){
 
 /* ---------- Fortschritt: XP, Streak, Quests, Erfolge ---------- */
 const defaultS=()=>({xp:0,hist:{},daily:{date:0,xp:0,counts:{},claimed:{},goalHit:false},stats:{lessons:0,chats:0,roles:0,stories:0,writes:0,grammar:0,tests:0},gram:{},weak:{topics:{},types:{}},ach:{},level:''});
-const defaultG=()=>({lang:'es',streak:0,lastDay:0,best:0,freeze:1,goal:20,voice:1,rate:1});
+const defaultG=()=>({lang:'es',streak:0,lastDay:0,best:0,freeze:1,goal:20,voice:1,rate:1,saver:false,aiLog:{d:0,n:0}});
 /* Daten aus der Ein-Sprachen-Version (Spanisch) übernehmen */
 function migrateLegacy(){
   try{
@@ -1387,7 +1388,7 @@ function ensurePlan(){
     if(due>0)keys.push('cards');
     if(planLesson())keys.push('lesson');
     if(weakPool().length>=4)keys.push('weak');
-    if(navigator.onLine)keys.push('chat');
+    if(navigator.onLine&&!G.saver)keys.push('chat');
     const pl=planLesson();S.daily.plan={keys,due0:Math.min(10,due),done:{},bonus:false,lbl:pl?`${pl.u.title}: ${pl.t.t} · ca. 5 Min`:''};
     saveS();
   }
@@ -1926,6 +1927,8 @@ function renderHome(){
       <div class="kpi"><b>${S.stats.chats}</b><span>Tutor-Sätze</span></div>
       <div class="kpi"><b>${Object.keys(S.gram||{}).length}</b><span>Grammatik-Themen</span></div>
       <div class="kpi"><b>${S.stats.writes||0}</b><span>Texte geschrieben</span></div></div></div>
+    <div class="card pad"><div class="row"><h3 style="margin:0">Sparmodus (KI aus)</h3><span class="grow"></span><label class="small"><input type="checkbox" id="hm-saver" ${G.saver?'checked':''}> ${G.saver?'an':'aus'}</label></div>
+      <p class="small muted" style="margin:6px 0 0">Sperrt alles, was Claude-Nutzung verbraucht: Tutor, Rollenspiel, Schreiben, Übersetzer, Geschichten und neue Lektionen. Karten, Wiederholung, gespeicherte Lektionen, Lernplan und Schwächen-Training laufen weiter. KI-Aufrufe heute: <b>${G.aiLog&&G.aiLog.d===dayNum()?G.aiLog.n:0}</b></p></div>
     <div class="card pad"><h3 style="margin-bottom:6px">Offline nutzen</h3><p class="small muted" style="margin:0 0 8px">Lade Lektionen und Grammatik vorab, solange du online bist. Danach laufen sie auch ohne Internet (📥 im Lernpfad). Neue Inhalte erzeugen und Tutor brauchen weiter Internet.</p><div class="small" id="off-stat">${offlineStat()}</div><div class="row" style="margin-top:8px"><button class="btn primary" id="off-go">📥 Für Offline vorbereiten</button></div></div>
     <div class="card pad"><h3 style="margin-bottom:10px">Fortschritt nach Niveau</h3>${['A1','A2','B1','B2'].map(l=>{const us=UNITS.filter(u=>u.lv===l),d=us.filter(u=>units[u.id]&&units[u.id].done).length,st=us.filter(u=>units[u.id]&&units[u.id].star).length;return `<div class="quest"><span><b>${l}</b> · ${d}/${us.length} Lektionen · ${st} ⭐</span><div class="bar"><i style="width:${us.length?d/us.length*100:0}%"></i></div></div>`}).join('')}</div>
     <div class="card pad"><h3 style="margin-bottom:10px">Erfolge</h3><div class="badges">${ACH.map(a=>`<span class="badge ${S.ach[a.id]?'':'off'}">${a.ico} ${esc(a.t)}</span>`).join('')}</div></div>
@@ -1939,6 +1942,7 @@ function renderHome(){
   const wg=$('#wk-go');if(wg)wg.onclick=trainWeak;
   $('#hm-goal').onchange=e=>{G.goal=+e.target.value;saveG();renderHome()};
   $('#off-go').onclick=offlinePrepare;
+  $('#hm-saver').onchange=e=>{G.saver=e.target.checked;saveG();if(G.saver&&S.daily.plan)S.daily.plan.keys=S.daily.plan.keys.filter(k=>k!=='chat');saveS();renderHome();toast(G.saver?'Sparmodus an – KI ist gesperrt.':'Sparmodus aus.')};
   const rs=$('#hm-reset');
   rs.onclick=()=>{
     if(!rs.dataset.sure){rs.dataset.sure='1';rs.textContent='Wirklich alles löschen?';return}

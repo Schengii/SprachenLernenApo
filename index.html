@@ -19,6 +19,8 @@
 @media (prefers-color-scheme:dark){
   :root{--bg:#1d1813;--card:#27201a;--ink:#f3eadc;--muted:#a8998a;--line:#3a3027;--accent:#ea6a4b;--accent-d:#f08a6f;--accent-soft:#4a2a20;--ok:#6cc690;--ok-soft:#1f3a2a;--bad:#f08a6f;--bad-soft:#4a2320;--warn:#e8b25a;--warn-soft:#41311a;--shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3)}
 }
+:root[data-theme=dark]{--bg:#1d1813;--card:#27201a;--ink:#f3eadc;--muted:#a8998a;--line:#3a3027;--accent:#ea6a4b;--accent-d:#f08a6f;--accent-soft:#4a2a20;--ok:#6cc690;--ok-soft:#1f3a2a;--bad:#f08a6f;--bad-soft:#4a2320;--warn:#e8b25a;--warn-soft:#41311a;--shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3)}
+:root[data-theme=light]{--shadow:0 1px 2px rgba(60,40,20,.08),0 6px 20px rgba(60,40,20,.06);--bg:#faf5ec; --card:#fffdf8; --ink:#2b2118; --muted:#7a6a5a; --line:#e8dcc8; --accent:#c4472b; --accent-d:#9f3620; --accent-soft:#f8e0d8; --ok:#2f7a4f; --ok-soft:#dff0e5; --bad:#a8321c; --bad-soft:#fbe0da; --warn:#a15c00; --warn-soft:#fdeccc; --gold:#e5a823;}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 'DM Sans',system-ui,sans-serif;min-height:100vh}
@@ -519,6 +521,16 @@ function exportData(){
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('esapp:'))o[k]=localStorage.getItem(k)}
   return JSON.stringify({app:'Lingua viva',exportiert:new Date().toISOString(),daten:o},null,1);
 }
+async function backupNow(){
+  const j=exportData();
+  try{const d=await window.claude.use('downloads');if(!d)throw 0;await d.save({filename:'lingua-viva-sicherung-'+new Date().toISOString().slice(0,10)+'.json',data:j});G.lastBackup=dayNum();saveG();toast('Sicherung gespeichert.')}
+  catch(e){
+    if(e&&e.code==='declined'){toast('Speichern abgebrochen.');return}
+    try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([j],{type:'application/json'}));a.download='lingua-viva-sicherung-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();G.lastBackup=dayNum();saveG();toast('Sicherung gespeichert (Downloads).')}
+    catch(e2){toast('Speichern nicht möglich – nutze „Datenschutz & meine Daten“ → Export.')}
+  }
+  if($('#pane-home').classList.contains('on'))renderHome();
+}
 function showPrivacy(){
   const m=$('#modal');
   m.innerHTML=`<div class="mbox" role="dialog" aria-modal="true" aria-labelledby="pv-t"><h2 id="pv-t">Datenschutz &amp; meine Daten</h2>
@@ -545,6 +557,7 @@ function showPrivacy(){
   $('#pv-ai').onchange=apply;$('#pv-cloud').onchange=apply;
   $('#pv-close').onclick=closeModal;
   $('#pv-exp').onclick=()=>{
+    G.lastBackup=dayNum();saveG();
     const j=exportData(),box=$('#pv-box');box.hidden=false;box.value=j;box.select();
     (async()=>{
       try{const d=await window.claude.use('downloads');if(!d)throw 0;await d.save({filename:'lingua-viva-daten.json',data:j});toast('Export gespeichert.')}
@@ -674,7 +687,7 @@ function cancelMic(){
 
 /* ---------- Fortschritt: XP, Streak, Quests, Erfolge ---------- */
 const defaultS=()=>({xp:0,hist:{},daily:{date:0,xp:0,counts:{},claimed:{},goalHit:false},stats:{lessons:0,chats:0,roles:0,stories:0,writes:0,grammar:0,tests:0},gram:{},weak:{topics:{},types:{}},ach:{},level:''});
-const defaultG=()=>({lang:'es',streak:0,lastDay:0,best:0,freeze:1,goal:20,voice:1,rate:1,saver:false,aiLog:{d:0,n:0}});
+const defaultG=()=>({lang:'es',streak:0,lastDay:0,best:0,freeze:1,goal:20,voice:1,rate:1,theme:'auto',lastBackup:0,saver:false,aiLog:{d:0,n:0}});
 /* Daten aus der Ein-Sprachen-Version (Spanisch) übernehmen */
 function migrateLegacy(){
   try{
@@ -691,6 +704,8 @@ function migrateLegacy(){
 migrateLegacy();
 const loadG=()=>Object.assign(defaultG(),LS.get('g',{}));
 let G=loadG();
+function applyTheme(){document.documentElement.dataset.theme=G.theme||'auto'}
+applyTheme();
 let S=defaultS();
 function saveG(){LS.set('g',G)}
 function saveS(){LS.set('state',S)}
@@ -1900,6 +1915,7 @@ function renderHome(){
   const t=dayNum(),goal=G.goal,pct=Math.min(1,S.daily.xp/goal),C=2*Math.PI*40;
   const lv=lvlOf(S.xp),lo=30*(lv-1)*(lv-1),hi=30*lv*lv,lp=Math.round((S.xp-lo)/(hi-lo)*100);
   const due=dueList().length;
+  const bkOld=S.xp>=30&&(!G.lastBackup||dayNum()-G.lastBackup>=7);
   let nx;
   if(due>0)nx={t:`${due} Karten warten auf Wiederholung`,s:'Kurz wiederholen hält das Gelernte frisch.',a:'Jetzt wiederholen',go:()=>{showTab('cards');startReview()}};
   else{const u=UNITS.find(u=>!(units[u.id]&&units[u.id].done));
@@ -1927,21 +1943,25 @@ function renderHome(){
       <div class="kpi"><b>${S.stats.chats}</b><span>Tutor-Sätze</span></div>
       <div class="kpi"><b>${Object.keys(S.gram||{}).length}</b><span>Grammatik-Themen</span></div>
       <div class="kpi"><b>${S.stats.writes||0}</b><span>Texte geschrieben</span></div></div></div>
+    <div class="card pad"><div class="row"><h3 style="margin:0">Lernstand sichern</h3><span class="grow"></span><button class="btn ${bkOld?'primary':''}" id="hm-bk">Jetzt sichern</button></div>
+      <p class="small muted" style="margin:6px 0 0">${G.lastBackup?'Letzte Sicherung: '+(dayNum()-G.lastBackup===0?'heute':'vor '+(dayNum()-G.lastBackup)+' Tagen')+'.':'Noch nie gesichert.'} ${bkOld?'<b>Sichere deinen Fortschritt – er liegt nur in diesem Browser.</b>':'Die Datei enthält Fortschritt, Karten und Lektionen; Import über „Datenschutz &amp; meine Daten“.'}</p></div>
     <div class="card pad"><div class="row"><h3 style="margin:0">Sparmodus (KI aus)</h3><span class="grow"></span><label class="small"><input type="checkbox" id="hm-saver" ${G.saver?'checked':''}> ${G.saver?'an':'aus'}</label></div>
       <p class="small muted" style="margin:6px 0 0">Sperrt alles, was Claude-Nutzung verbraucht: Tutor, Rollenspiel, Schreiben, Übersetzer, Geschichten und neue Lektionen. Karten, Wiederholung, gespeicherte Lektionen, Lernplan und Schwächen-Training laufen weiter. KI-Aufrufe heute: <b>${G.aiLog&&G.aiLog.d===dayNum()?G.aiLog.n:0}</b></p></div>
     <div class="card pad"><h3 style="margin-bottom:6px">Offline nutzen</h3><p class="small muted" style="margin:0 0 8px">Lade Lektionen und Grammatik vorab, solange du online bist. Danach laufen sie auch ohne Internet (📥 im Lernpfad). Neue Inhalte erzeugen und Tutor brauchen weiter Internet.</p><div class="small" id="off-stat">${offlineStat()}</div><div class="row" style="margin-top:8px"><button class="btn primary" id="off-go">📥 Für Offline vorbereiten</button></div></div>
     <div class="card pad"><h3 style="margin-bottom:10px">Fortschritt nach Niveau</h3>${['A1','A2','B1','B2'].map(l=>{const us=UNITS.filter(u=>u.lv===l),d=us.filter(u=>units[u.id]&&units[u.id].done).length,st=us.filter(u=>units[u.id]&&units[u.id].star).length;return `<div class="quest"><span><b>${l}</b> · ${d}/${us.length} Lektionen · ${st} ⭐</span><div class="bar"><i style="width:${us.length?d/us.length*100:0}%"></i></div></div>`}).join('')}</div>
     <div class="card pad"><h3 style="margin-bottom:10px">Erfolge</h3><div class="badges">${ACH.map(a=>`<span class="badge ${S.ach[a.id]?'':'off'}">${a.ico} ${esc(a.t)}</span>`).join('')}</div></div>
     <div class="card pad"><h3 style="margin-bottom:10px">Sprachen</h3><div class="grid">${langTiles()}</div></div>
-    <div class="card pad row"><label class="small muted">Tagesziel <select id="hm-goal">${[10,20,30,50].map(g=>`<option ${g===goal?'selected':''}>${g}</option>`).join('')}</select> XP</label><span class="grow"></span><button class="btn ghost small" id="hm-reset">Fortschritt (diese Sprache) zurücksetzen</button></div>
+    <div class="card pad row"><label class="small muted">Design <select id="hm-theme">${[['auto','Automatisch'],['light','Hell'],['dark','Dunkel']].map(t=>`<option value="${t[0]}" ${G.theme===t[0]?'selected':''}>${t[1]}</option>`).join('')}</select></label> <label class="small muted">Tagesziel <select id="hm-goal">${[10,20,30,50].map(g=>`<option ${g===goal?'selected':''}>${g}</option>`).join('')}</select> XP</label><span class="grow"></span><button class="btn ghost small" id="hm-reset">Fortschritt (diese Sprache) zurücksetzen</button></div>
     <p class="small muted" style="margin:0"><span id="hm-sync">${esc(syncText())}</span> <button class="chip" id="hm-save">Jetzt speichern</button></p>`;
   $$('.lang-sw').forEach(b=>b.onclick=()=>loadLang(b.dataset.code));
   $('#hm-save').onclick=()=>{if(Cloud.col){Cloud.dirty.add('g');['state','srs','units','custom'].forEach(k=>Cloud.dirty.add(curLang+'_'+k));cloudFlush()}else toast(syncText())};
   $('#hm-next').onclick=nx.go;
   const pg=$('#plan-go');if(pg)pg.onclick=planGo;
   const wg=$('#wk-go');if(wg)wg.onclick=trainWeak;
+  $('#hm-theme').onchange=e=>{G.theme=e.target.value;saveG();applyTheme()};
   $('#hm-goal').onchange=e=>{G.goal=+e.target.value;saveG();renderHome()};
   $('#off-go').onclick=offlinePrepare;
+  $('#hm-bk').onclick=backupNow;
   $('#hm-saver').onchange=e=>{G.saver=e.target.checked;saveG();if(G.saver&&S.daily.plan)S.daily.plan.keys=S.daily.plan.keys.filter(k=>k!=='chat');saveS();renderHome();toast(G.saver?'Sparmodus an – KI ist gesperrt.':'Sparmodus aus.')};
   const rs=$('#hm-reset');
   rs.onclick=()=>{

@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1f6f5c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Lingua viva</title>
 <style>
@@ -485,6 +489,7 @@ async function initCaps(){
 }
 
 const STANDALONE=!(window.claude&&window.claude.use);
+if(STANDALONE&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 /* ---------- Datenschutz (DSGVO): Einwilligung, Export, Löschung ---------- */
 const Consent={ai:false,cloud:false,ts:0};
 try{const c=JSON.parse(localStorage.getItem('esapp:consent')||'null');if(c){Consent.ai=!!c.ai;Consent.cloud=!!c.cloud;Consent.ts=c.ts||0}}catch(e){}

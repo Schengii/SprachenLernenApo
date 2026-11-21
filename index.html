@@ -357,7 +357,7 @@ body.running nav.tabs{display:none}body.running{padding-bottom:12px}
   <!-- READ -->
   <section class="pane" id="pane-read">
     <div id="read-main" class="stack">
-      <div class="card pad">
+      <div class="card pad" id="rd-ai-card">
         <p class="muted" style="margin-top:0">Kurze Geschichten auf deinem Niveau. Tippe Wörter für die Übersetzung, höre die Absätze an und beantworte danach Verständnisfragen.</p>
         <div class="row">
           <input type="text" id="rd-topic" placeholder="Thema, z. B. Ein Tag in der Stadt" style="flex:1;min-width:200px">
@@ -1793,6 +1793,7 @@ Nur JSON: {"title":"Titel in der Zielsprache","paragraphs":[{"es":"","de":"deuts
   }catch(e){out.innerHTML='';toast(e.message)}finally{btn.disabled=false;btn.textContent='Geschichte erstellen'}
 };
 function renderFixed(){
+  const ai=canAI(),ac=$('#rd-ai-card');if(ac)ac.hidden=!ai&&!!PRETEXTS[curLang];
   const P=PRETEXTS[curLang],card=$('#rd-fixed-card');
   if(!P){card.hidden=true;return}
   card.hidden=false;
@@ -1992,7 +1993,7 @@ function renderHome(){
   $('#hm-goal').onchange=e=>{G.goal=+e.target.value;saveG();renderHome()};
   $('#off-go').onclick=offlinePrepare;
   $('#hm-bk').onclick=backupNow;
-  $('#hm-saver').onchange=e=>{G.saver=e.target.checked;saveG();if(G.saver&&S.daily.plan)S.daily.plan.keys=S.daily.plan.keys.filter(k=>k!=='chat');saveS();renderHome();toast(G.saver?'Sparmodus an – KI ist gesperrt.':'Sparmodus aus.')};
+  $('#hm-saver').onchange=e=>{G.saver=e.target.checked;saveG();if(G.saver&&S.daily.plan)S.daily.plan.keys=S.daily.plan.keys.filter(k=>k!=='chat');saveS();renderHome();renderFixed();toast(G.saver?'Sparmodus an – KI ist gesperrt.':'Sparmodus aus.')};
   const rs=$('#hm-reset');
   rs.onclick=()=>{
     if(!rs.dataset.sure){rs.dataset.sure='1';rs.textContent='Wirklich alles löschen?';return}
